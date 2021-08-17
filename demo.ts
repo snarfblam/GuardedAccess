@@ -6,8 +6,9 @@
 // manifested in an IDE and a compiler rather than at runtime.
 
 import {
-    guardClass, unguardClass,
-    DefaultGuard, Guarded, GuardedConstructor, ExtensibleGuardedConstructor, OriginalConstructor,
+    DefaultGuard, guardClass, unguardClass,
+    Guarded,  OriginalConstructor,
+    GuardedConstructor, ExtensibleGuardedConstructor,
 } from './guardTypes';
 
 
@@ -53,8 +54,6 @@ export type DemoPublic = Guarded<Demo, DefaultGuard>;
 export const DemoPublicAlt: ExtensibleGuardedConstructor<typeof Demo, DefaultGuard> = Demo as any;
 export type DemoPublicAlt = Guarded<Demo, DefaultGuard>;
 
-
-
 ///////////////////////////////////////////////////////////////////////////
 //  The "tests"
 //
@@ -62,7 +61,7 @@ export type DemoPublicAlt = Guarded<Demo, DefaultGuard>;
 //  string this means it's working correctly!
 
 const testObj = new DemoPublic;
-testObj.unguarded = 'no error';
+testObj.unguarded = "No error.";
 testObj._guarded = "Cannot assign to '_guarded' because it is a read-only property. ts(2540)";
 // Non-public members now "don't exist" instead of being "not accessible"
 testObj._unaffected = "Property '_unaffected' does not exist on type 'Guarded<Demo, `_${string}`>'. ts(2339)";
@@ -71,13 +70,15 @@ testObj._unaffected = "Property '_unaffected' does not exist on type 'Guarded<De
 class DemoSubclass extends unguardClass(DemoPublic) {
     protected override virtualMethod() {
         Demo.staticMethod(Demo.staticProperty);
-        this.unguarded = 'no error';
-        this._unaffected = 'no error';
-        this._guarded = 'no error';
-        Demo.staticProperty = 'no error';
+        this.unguarded = "No error.";
+        this._unaffected = "No error.";
+        this._guarded = "No error.";
+        Demo.staticProperty = "No error.";
 
         this._alsoUnaffected = "Property '_alsoUnaffected' is private and only accessible within class 'Demo'.ts(2341)";
         this.#cantGuard = "Property '#cantGuard' is not accessible outside class 'Demo' because it has a private identifier.ts(18013)";
+
+        return "No error.";
     }
 }
 
@@ -85,18 +86,24 @@ class DemoSubclass extends unguardClass(DemoPublic) {
 const DemoOriginal = DemoPublic as any as OriginalConstructor<typeof DemoPublic>;
 class DemoSubclassAlt extends DemoOriginal { }
 
+// Static members are guarded as well
+DemoPublic.unguardedStatic = "No error.";
+DemoPublic._guardedStatic = "Cannot assign to '_guardedStatic' because it is a read-only property.ts(2540)";
+
 
 ///////////////////////////////////////////////////////////////////////////
 //  The Failures
 //
 //  Things that should work but either can't or currently don't
 
-// Ideally statics would remain visible.
-DemoPublic.unguardedStatic = "Property 'unguardedStatic' does not exist on type 'ExtensibleGuardedConstructor<typeof Demo, `_${string}`>'.ts(2339)";
-
-// Ideally the error here should be that _guardedStatic is readonly.
-DemoPublic._guardedStatic = "Property 'unguardedStatic' does not exist on type 'ExtensibleGuardedConstructor<typeof Demo, `_${string}`>'.ts(2339)";
-
-// Ideally the intermediate cast to `any` wouldn't be necessary.
-const DemoOriginalAlt = DemoPublic as OriginalConstructor<typeof DemoPublic>;
+// Ideally an intermediate cast to `any` wouldn't be necessary.
+//     Conversion of type ... to type ... may be a mistake because neither type 
+//     sufficiently overlaps with the other.If this was intentional, convert the
+//     expression to 'unknown' first. (...) ts(2352)
+const DemoOriginalSansAny = DemoPublic as OriginalConstructor<typeof DemoPublic>;
+//     Type 'typeof Demo' is not assignable to type 
+//     'ExtensibleGuardedConstructor<typeof Demo, `_${string}`>'.
+//     Property '[originalConstructorKey]' is missing in type 'typeof Demo' but
+//     required in type 'OriginalConstructorCarryon<typeof Demo>'.ts(2322)
+export const DemoPublicSansAny: ExtensibleGuardedConstructor<typeof Demo, DefaultGuard> = Demo;
 

@@ -83,14 +83,15 @@ export type UnguardedProperties<T, TGuard extends string> =
 export type Guarded<T, TGuard extends string> =
     UnguardedProperties<T, TGuard> & Readonly<GuardedProperties<T, TGuard>>;
 
-/** Create a constructor interface whose instance type is `Guarded<T, TGuard>`.
+/** Create a constructor interface whose instance type is guarded and whose 
+ *  static members are guarded.
  *  @template T The class or constructor to be modified.
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed.
  */
-export interface GuardedConstructor<T extends Constructor, TGuard extends string> {
+export type GuardedConstructor<T extends Constructor, TGuard extends string> = {
     new(...args: ConstructorParameters<T>): Guarded<InstanceType<T>, TGuard>;
-}
+} & Guarded<T, TGuard>;
 
 /** Remove the readonly modifier from any property whose name matches the guard
  *  template. This is **not** the strict inverse of the `Guarded<>` helper.
@@ -102,14 +103,15 @@ export interface GuardedConstructor<T extends Constructor, TGuard extends string
 export type Unguarded<T, TGuard extends string> =
     UnguardedProperties<T, TGuard> & Mutable<GuardedProperties<T, TGuard>>;
 
-/** Create a constructor interface whose instance type is `Unguarded<T, TGuard>`.
+/** Create a constructor interface whose instance type is unguarded and whose
+ *  static members are unguarded.
  *  @template T The class or constructor to be modified.
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed.
  */
-export interface UnguardedConstructor<T extends Constructor, TGuard extends string> {
+export type UnguardedConstructor<T extends Constructor, TGuard extends string> = {
     new(...args: ConstructorParameters<T>): Unguarded<InstanceType<T>, TGuard>;
-}
+} & Unguarded<T, TGuard>;
 
 /** Defines the pseudo-property that contains the original constructor 
  *  for which a guarded constructor was created.
