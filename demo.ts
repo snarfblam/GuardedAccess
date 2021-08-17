@@ -1,15 +1,15 @@
 // This file serves as a demo and "test" of the access guard helper types. 
 // 
-// I'm not sure how one can test "pure" types in practice, or whether it's even
-// generally possible. We're not testing against proper execution of
-// code, but rather for proper inferencing and type mutation, which is 
-// manifested in an IDE and a compiler rather than at runtime.
+// I'm not aware of a better way to test "pure" types in practice, or whether 
+// it's even generally possible. We're not testing against execution of
+// code, but rather for expected/desired compiler errors.
 
 import {
     DefaultGuard, guardClass, unguardClass,
     Guarded,  OriginalConstructor,
     GuardedConstructor, ExtensibleGuardedConstructor,
 } from './guardTypes';
+
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -28,20 +28,19 @@ class Demo {
     private _alsoUnaffected = 'private read, private write';
     #cantGuard = 'private read, private write';
 
+    // Guards are applied to static members as well
+    public static unguardedStatic = 'public read, public write';
+    public static _guardedStatic = 'public read, protected write';
+
     // Unfortunately, non-public members are too opaque in typescript and
     // can not be modified in the same way. :(
     
     // Concerns for protected properties apply to methods as well.
     protected virtualMethod() { return 'protected'; }
     
-    // Static properties and methods must remain accessible in subclasses.
+    // Protected properties and methods must remain accessible in subclasses.
     protected static staticMethod(arg: string) { }
     protected static staticProperty = 'protected';
-
-    // An unresolved complication is that static properties and methods
-    // are not accessible on the guarded constructor.
-    public static unguardedStatic = 'public read, public write';
-    public static _guardedStatic = 'public read, public write';
 }
 
 // Exporting a class means we need to export both a constructor function and
@@ -49,10 +48,11 @@ class Demo {
 export const DemoPublic = guardClass<typeof Demo, true, DefaultGuard>(Demo, true);
 export type DemoPublic = Guarded<Demo, DefaultGuard>;
 
-// This is an alternative, equivalent construction. Note the required cast to
-// `any` or `unkonwn`).
-export const DemoPublicAlt: ExtensibleGuardedConstructor<typeof Demo, DefaultGuard> = Demo as any;
+// This is an alternative, more verbose construction of the same class.
+export const DemoPublicAlt: ExtensibleGuardedConstructor<typeof Demo, DefaultGuard> = Demo;
 export type DemoPublicAlt = Guarded<Demo, DefaultGuard>;
+
+
 
 ///////////////////////////////////////////////////////////////////////////
 //  The "tests"
@@ -66,6 +66,14 @@ testObj._guarded = "Cannot assign to '_guarded' because it is a read-only proper
 // Non-public members now "don't exist" instead of being "not accessible"
 testObj._unaffected = "Property '_unaffected' does not exist on type 'Guarded<Demo, `_${string}`>'. ts(2339)";
 
+
+// Static members are guarded as well
+DemoPublic.unguardedStatic = "No error.";
+DemoPublic._guardedStatic = "Cannot assign to '_guardedStatic' because it is a read-only property. ts(2540)";
+
+type DPI = Pick<DemoPublic, keyof DemoPublic>;
+type DPC = Pick<typeof DemoPublic, keyof typeof DemoPublic>;
+
 // To inherit, unguard the class
 class DemoSubclass extends unguardClass(DemoPublic) {
     protected override virtualMethod() {
@@ -75,35 +83,36 @@ class DemoSubclass extends unguardClass(DemoPublic) {
         this._guarded = "No error.";
         Demo.staticProperty = "No error.";
 
-        this._alsoUnaffected = "Property '_alsoUnaffected' is private and only accessible within class 'Demo'.ts(2341)";
-        this.#cantGuard = "Property '#cantGuard' is not accessible outside class 'Demo' because it has a private identifier.ts(18013)";
+        this._alsoUnaffected = "Property '_alsoUnaffected' is private and only accessible within class 'Demo'. ts(2341)";
+        this.#cantGuard = "Property '#cantGuard' is not accessible outside class 'Demo' because it has a private identifier. ts(18013)";
 
         return "No error.";
     }
 }
 
-// Alternative, less type-safe approach to unguarding a class
-const DemoOriginal = DemoPublic as any as OriginalConstructor<typeof DemoPublic>;
-class DemoSubclassAlt extends DemoOriginal { }
-
-// Static members are guarded as well
-DemoPublic.unguardedStatic = "No error.";
-DemoPublic._guardedStatic = "Cannot assign to '_guardedStatic' because it is a read-only property.ts(2540)";
-
+// Alternative more verbose approach to unguarding a class
+const DemoOriginalAlt = DemoPublic as OriginalConstructor<typeof DemoPublic>;
+class DemoSubclassAlt extends DemoOriginalAlt { }
 
 ///////////////////////////////////////////////////////////////////////////
 //  The Failures
 //
 //  Things that should work but either can't or currently don't
-
-// Ideally an intermediate cast to `any` wouldn't be necessary.
-//     Conversion of type ... to type ... may be a mistake because neither type 
-//     sufficiently overlaps with the other.If this was intentional, convert the
-//     expression to 'unknown' first. (...) ts(2352)
-const DemoOriginalSansAny = DemoPublic as OriginalConstructor<typeof DemoPublic>;
-//     Type 'typeof Demo' is not assignable to type 
-//     'ExtensibleGuardedConstructor<typeof Demo, `_${string}`>'.
-//     Property '[originalConstructorKey]' is missing in type 'typeof Demo' but
-//     required in type 'OriginalConstructorCarryon<typeof Demo>'.ts(2322)
-export const DemoPublicSansAny: ExtensibleGuardedConstructor<typeof Demo, DefaultGuard> = Demo;
-
+//
+// • Protected read, private write data properties can not be a thing.
+//   Guarded interfaces depend on mapped types. Currently typescript has
+//   zero support for mapping members that aren't fully public. Accessors 
+//   must be used for this mode of assymetric accessibilty.
+//
+// • Unpermitted public access to protected or private members will produce
+//   a different error on a type that's guarded versus one that isn't (e.g. "
+//   does not exist" instead of "is declared private"). This isn't ideal, if
+//   only because it's inconsistent.
+//
+// • `OriginalConstructor<GuardedConstructor<T>>` yields `never` instead of 
+//   producing an error. Most likely an error will still crop up down the line,
+//   but this still makes it harder to sort out the root of the problem: 
+//   `ExtensibleGuardedConstructor` should have been used instead.
+//       • Example: you might see "Type 'never' is not a constructor function 
+//         type" when trying to extend a guarded class that was unintentionally
+//         made non-extensible.

@@ -118,7 +118,7 @@ export type UnguardedConstructor<T extends Constructor, TGuard extends string> =
  *  @template T The original class or constructor.
  */
 interface OriginalConstructorCarryon<T extends Constructor> {
-    [originalConstructorKey]: T;
+    [originalConstructorKey]?: T;
 }
 
 /** Get the original class or constructor from which a guarded constructor was
@@ -126,7 +126,7 @@ interface OriginalConstructorCarryon<T extends Constructor> {
  *  @template T The class or constructor to be modified.
  * */
 export type OriginalConstructor<T> =
-    T extends { [originalConstructorKey]: infer R } ? R : never
+    T extends { [originalConstructorKey]?: infer R } ? R : never
 
 /** Create a constructor interface whose instance type is `Guarded<T, TGuard>`,
  *  and that has a property `privateConstructor` containing the constructor
@@ -164,54 +164,20 @@ type MaybeExtensibleGuardedConstructor<T extends Constructor, TExtensible extend
  *  facilitates type coercion and at runtime is a no-op.
  *  @param ctor The constructor to apply the access guard to.
  *  @param extensible If true, the original constructor type can be retreived
- *  for the purpose of subclassing. See the `OriginalConstructor` helper.
- *  @returns The constructor that was passed in, unmodified but re-typed.
- *  @remarks Direct use of the `ExtensibleGuardedConstructor` helper requires
- *  and intermediate cast to `unknown` or `any`, which makes it possible to   
- *  force an invalid cast. This is because of the constructor pseudo-property
- *  [OriginalConstructorKey] not being present on the actual constructor. There
- *  may be a more elegant way to tack on type metadata, but I couldn't find it.
- *  @example
- *  This function merely returns the object passed with a different type. Below
- *  are two equivalent approaches to defining guarded classes for public 
- *  consumption.
- * ```
- * // Direct usage of utility types
- * // Use ExtensibleGuardedConstructor<> to facilitate inheritance. Requires
- * // intermediate cast to `any`.
- * export type MyClassPublic = Guarded<MyClass>;
- * export const MyClassPublic: GuardedConstructor<typeof MyClass> = MyClass
- * 
- * // Guarding via helper function
- * // Use guardClass(MyClass, true) to facilitate inheritance
- * export const MyClassPublic = guardClass(MyClass, false);
- * export type MyClassPublic = InstanceType<typeof MyClassPublic>;
- * ```
+ *  for the purpose of subclassing. 
+ *  @returns The constructor that was passed in, re-typed.
+ *  @see the `GuardedConstructor` and `ExtensibleGuardedConstructor` types
+ *  for a more pure alternative.
  */    
 export function guardClass<T extends Constructor, TExtensible extends boolean, TGuard extends string>(ctor: T, extensible: TExtensible) {
     return ctor as unknown as MaybeExtensibleGuardedConstructor<T, TExtensible, TGuard>;
 }
 
-/** Reverses the type-change applied by guardClass(), provided that the 
- *  constructor was specified to be extensible when the guard was applied. This
- *  function facilitates type coercion and at runtime is a no-op.
+/** Reverses the type-change applied by guardClass().
  *  @param ctor The constructor to remove the access guard from
  *  @returns The constructor that was passed in, with its originally declared 
  *  type.
- *  @remarks Direct use of the `OriginalConstructor` helper type requires an
- *  intermediate case to `unknown` or `any`, making it possible to force an 
- *  invalid cast. Even though typescript is able to properly infer the original 
- *  constructor type, it will still produce errors as it does not understand 
- *  that the guarded constructor will satisfy the interface of the original 
- *  constructor. This helper function does the type cast via `any`, while using 
- *  generic type inference to ensure the correct constructor type is produced.
- *  @example
- *  While this class simply applies the `OriginalConstructor<>` helper type to
- *  a guarded constructor, which can be done directly, it requires an 
- *  intermediate cast to `any`, which permits potentially type-incorrect casting.
- *  `const OriginalClass: OriginalConstructor<typeof GuardedClass> = GuardedClass as any;`
- *  This helper function leverages typescript's inferencing abilities to ensure
- *  the type manipulation is performed correctly.
+ *  @see the 
  */
 export function unguardClass<T extends ExtensibleGuardedConstructor<TOrig, TGuard>, TGuard extends string, TOrig extends Constructor>(ctor: T): OriginalConstructor<T> {
     return ctor as any;
