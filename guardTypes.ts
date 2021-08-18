@@ -5,8 +5,6 @@
 //  for composition of their types.
 //
 
-import { getAllJSDocTagsOfKind } from "./node_modules/typescript/lib/typescript";
-
 /** Constructor interface that accepts `TParams` to produce an instance of
  *  `TInstance`.
  *  @template TParams A tuple type representing the constructor parameters.
