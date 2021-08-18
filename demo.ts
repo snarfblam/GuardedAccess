@@ -45,12 +45,28 @@ class Demo {
 
 // Exporting a class means we need to export both a constructor function and
 // an instance type.
-export const DemoPublic = guardClass<typeof Demo, true, DefaultGuard>(Demo, true);
-export type DemoPublic = Guarded<Demo, DefaultGuard>;
+export const DemoPublic = guardClass(Demo);
+export type DemoPublic = Guarded<Demo>;
 
 // This is an alternative, more verbose construction of the same class.
-export const DemoPublicAlt: ExtensibleGuardedConstructor<typeof Demo, DefaultGuard> = Demo;
-export type DemoPublicAlt = Guarded<Demo, DefaultGuard>;
+export const DemoPublicAlt: ExtensibleGuardedConstructor<typeof Demo> = Demo;
+export type DemoPublicAlt = Guarded<Demo>;
+
+// An alternative guard pattern (template literal type) can be specified
+type DollarGuard = `${string}$`;
+class DollarSuffix {
+    public unguarded = 'public read, public write';
+    public _alsoUnguarded = 'public read, public write';
+    public guarded$ = 'public read, protected write';
+
+    static unguardedStatic = 'public read, public write';
+    static _alsoUnguardedStatic = 'public read, public write';
+    static guardedStatic$ = 'public read, protected write';
+}
+
+export type DollarSuffixPublic = Guarded<DollarSuffix, DollarGuard>;
+export const DollarSuffixPublic: GuardedConstructor<
+    typeof DollarSuffix, DollarGuard> = DollarSuffix;
 
 
 
@@ -71,9 +87,6 @@ testObj._unaffected = "Property '_unaffected' does not exist on type 'Guarded<De
 DemoPublic.unguardedStatic = "No error.";
 DemoPublic._guardedStatic = "Cannot assign to '_guardedStatic' because it is a read-only property. ts(2540)";
 
-type DPI = Pick<DemoPublic, keyof DemoPublic>;
-type DPC = Pick<typeof DemoPublic, keyof typeof DemoPublic>;
-
 // To inherit, unguard the class
 class DemoSubclass extends unguardClass(DemoPublic) {
     protected override virtualMethod() {
@@ -93,6 +106,14 @@ class DemoSubclass extends unguardClass(DemoPublic) {
 // Alternative more verbose approach to unguarding a class
 const DemoOriginalAlt = DemoPublic as OriginalConstructor<typeof DemoPublic>;
 class DemoSubclassAlt extends DemoOriginalAlt { }
+
+// Alternative guard pattern
+const altTest = new DollarSuffixPublic();
+altTest.unguarded = "No error.";
+altTest._alsoUnguarded = "No error.";
+altTest.guarded$ = "Cannot assign to 'guarded$' because it is a read-only property.ts (2540)";
+
+
 
 ///////////////////////////////////////////////////////////////////////////
 //  The Failures
@@ -116,3 +137,7 @@ class DemoSubclassAlt extends DemoOriginalAlt { }
 //       • Example: you might see "Type 'never' is not a constructor function 
 //         type" when trying to extend a guarded class that was unintentionally
 //         made non-extensible.
+//
+//  • The pseudo-property [OriginalConstructorKey] may appear on guarded
+//    classes, depending on how the language service and/or IDE present the type
+//    information.

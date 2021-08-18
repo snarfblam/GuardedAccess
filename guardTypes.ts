@@ -53,7 +53,7 @@ type OriginalConstructorKey = typeof originalConstructorKey;
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed.
  */
-export type GuardedNameOf<T, TGuard extends string> =
+export type GuardedNameOf<T, TGuard extends string = DefaultGuard> =
     keyof T & TGuard;
 
 /** Isolate those properties of an interface that are guarded.
@@ -61,7 +61,7 @@ export type GuardedNameOf<T, TGuard extends string> =
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed.
  */
-export type GuardedProperties<T, TGuard extends string> =
+export type GuardedProperties<T, TGuard extends string = DefaultGuard> =
     Pick<T, GuardedNameOf<T, TGuard>>;
 
 /** Isolate those properties of an interface that are not guarded.
@@ -69,7 +69,7 @@ export type GuardedProperties<T, TGuard extends string> =
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed.
  */
-export type UnguardedProperties<T, TGuard extends string> =
+export type UnguardedProperties<T, TGuard extends string = DefaultGuard> =
     Omit<T, GuardedNameOf<T, TGuard>>;
 
 /** Apply a readonly modifier to any properties that match the guard template  
@@ -80,7 +80,7 @@ export type UnguardedProperties<T, TGuard extends string> =
  *  @remarks When applied to a class, non-public members will be lost from the
  *  resultant type.
  */
-export type Guarded<T, TGuard extends string> =
+export type Guarded<T, TGuard extends string = DefaultGuard> =
     UnguardedProperties<T, TGuard> & Readonly<GuardedProperties<T, TGuard>>;
 
 /** Create a constructor interface whose instance type is guarded and whose 
@@ -89,7 +89,7 @@ export type Guarded<T, TGuard extends string> =
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed.
  */
-export type GuardedConstructor<T extends Constructor, TGuard extends string> = {
+export type GuardedConstructor<T extends Constructor, TGuard extends string = DefaultGuard> = {
     new(...args: ConstructorParameters<T>): Guarded<InstanceType<T>, TGuard>;
 } & Guarded<T, TGuard>;
 
@@ -100,7 +100,7 @@ export type GuardedConstructor<T extends Constructor, TGuard extends string> = {
  *  denote guarded properties. Defaults to underscore-prefixed. 
  *  @see the `OriginalConstructor` type and the `unguardClass` function
  */
-export type Unguarded<T, TGuard extends string> =
+export type Unguarded<T, TGuard extends string = DefaultGuard> =
     UnguardedProperties<T, TGuard> & Mutable<GuardedProperties<T, TGuard>>;
 
 /** Create a constructor interface whose instance type is unguarded and whose
@@ -109,7 +109,7 @@ export type Unguarded<T, TGuard extends string> =
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed.
  */
-export type UnguardedConstructor<T extends Constructor, TGuard extends string> = {
+export type UnguardedConstructor<T extends Constructor, TGuard extends string = DefaultGuard> = {
     new(...args: ConstructorParameters<T>): Unguarded<InstanceType<T>, TGuard>;
 } & Unguarded<T, TGuard>;
 
@@ -135,7 +135,7 @@ export type OriginalConstructor<T> =
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed.
  */
-export type ExtensibleGuardedConstructor<T extends Constructor, TGuard extends string> =
+export type ExtensibleGuardedConstructor<T extends Constructor, TGuard extends string = DefaultGuard> =
     GuardedConstructor<T, TGuard> & OriginalConstructorCarryon<T>;
 
 /** A type that is not statically known to be extensible. This is strictly a
@@ -148,7 +148,7 @@ export type ExtensibleGuardedConstructor<T extends Constructor, TGuard extends s
  *  @template TGuard Optional. The template that identifies the pattern used to
  *  denote guarded properties. Defaults to underscore-prefixed. 
  */
-type MaybeExtensibleGuardedConstructor<T extends Constructor, TExtensible extends boolean, TGuard extends string> =
+type MaybeExtensibleGuardedConstructor<T extends Constructor, TExtensible extends boolean = true, TGuard extends string = DefaultGuard> =
     TExtensible extends true ? ExtensibleGuardedConstructor<T, TGuard> : GuardedConstructor<T, TGuard>;
 
 
@@ -169,7 +169,11 @@ type MaybeExtensibleGuardedConstructor<T extends Constructor, TExtensible extend
  *  @see the `GuardedConstructor` and `ExtensibleGuardedConstructor` types
  *  for a more pure alternative.
  */    
-export function guardClass<T extends Constructor, TExtensible extends boolean, TGuard extends string>(ctor: T, extensible: TExtensible) {
+export function guardClass<T extends Constructor, TExtensible extends boolean = true, TGuard extends string = DefaultGuard>(ctor: T, extensible?: TExtensible) {
+    // It's a bit unintuitive, but this function behaves as if the `extensible`
+    // parameter defaults to true, since if omitted:
+    //   - TExtensible can't be inferred from an argument
+    //   - TExtensible has its own default type (true) to use when it can't be inferred
     return ctor as unknown as MaybeExtensibleGuardedConstructor<T, TExtensible, TGuard>;
 }
 
@@ -179,6 +183,6 @@ export function guardClass<T extends Constructor, TExtensible extends boolean, T
  *  type.
  *  @see the 
  */
-export function unguardClass<T extends ExtensibleGuardedConstructor<TOrig, TGuard>, TGuard extends string, TOrig extends Constructor>(ctor: T): OriginalConstructor<T> {
+export function unguardClass<T extends ExtensibleGuardedConstructor<TOrig, TGuard>, TOrig extends Constructor, TGuard extends string = DefaultGuard>(ctor: T): OriginalConstructor<T> {
     return ctor as any;
 }
