@@ -8,7 +8,7 @@ import {
     DefaultGuard, guardClass, unguardClass,
     Guarded,  OriginalConstructor,
     GuardedConstructor, ExtensibleGuardedConstructor,
-} from './guardTypes';
+} from './guarded';
 
 
 
@@ -111,7 +111,7 @@ class DemoSubclassAlt extends DemoOriginalAlt { }
 const altTest = new DollarSuffixPublic();
 altTest.unguarded = "No error.";
 altTest._alsoUnguarded = "No error.";
-altTest.guarded$ = "Cannot assign to 'guarded$' because it is a read-only property.ts (2540)";
+altTest.guarded$ = "Cannot assign to 'guarded$' because it is a read-only property. ts(2540)";
 
 
 
